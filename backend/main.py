@@ -18,7 +18,7 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 
 class Leaderboard(SQLModel, table=True):
-    __tablename__ = "leaderboard"
+    __tablename__ = "leaderboard" # type: ignore
 
     Model: str = Field(sa_column=Column("Model", String(255), primary_key=True))
     Organization: str = Field(sa_column=Column("Organization", String(255), nullable=False))
@@ -37,6 +37,15 @@ class Leaderboard(SQLModel, table=True):
 # Retry mechanism for DB
 # ---------------------
 def wait_for_db(max_retries: int = 30, delay: float = 2.0):
+    """Retry connection to the database `max_retries` time
+
+    Args:
+        max_retries (int, optional): Max number of retries. Defaults to 30.
+        delay (float, optional): Delay between each retry. Defaults to 2.0.
+
+    Raises:
+        RuntimeError: Could not connect to DB after retries
+    """
     for i in range(max_retries):
         try:
             with engine.connect() as conn:
@@ -47,7 +56,7 @@ def wait_for_db(max_retries: int = 30, delay: float = 2.0):
             print(f"DB not ready (attempt {i + 1}/{max_retries}): {e}")
             time.sleep(delay)
     raise RuntimeError("Could not connect to DB after retries")
-
+# ---------------------
 
 
 app = FastAPI()
@@ -60,6 +69,9 @@ app.add_middleware(
 )
 
 
+# Startup is used here for brevity
+# on_event has been replaced with contextmanager
+# in newer version of FastAPI
 @app.on_event("startup")
 def on_startup():
     wait_for_db()
